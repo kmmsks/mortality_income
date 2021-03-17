@@ -3,6 +3,7 @@ title: "results"
 output:
   flexdashboard::flex_dashboard:
     orientation: rows
+    vertical_layout: scroll
 runtime: shiny
 ---
 
@@ -10,20 +11,23 @@ runtime: shiny
 knitr::opts_chunk$set(echo = FALSE)
 
 library(flexdashboard)
-library(here)
 library(data.table)
 library(readxl)
 library(magrittr)
-#library(DT)
+library(DT)
 library(plotly)
 
 
 
 ```
 
+```{css, echo=FALSE}
+#.dataTables_filter, .dataTables_info, { display: none; }
+```
+
 
 ```{r}
-mrr_income_gradients <- setDT(read_excel(here('data_in', 'mrr_income_gradients.xlsx')))[, mrr := irr]
+mrr_income_gradients <- setDT(read_excel('data_in/mrr_income_gradients.xlsx'))[, mrr := irr]
 
 
 create_plot <- function(sukup_in){
@@ -34,7 +38,7 @@ create_plot <- function(sukup_in){
     layout(
       yaxis = list(
         range=
-          if (input$psy_type %in% c('inpatient', 'outpatient')){
+          if (input$psy_type %in% c('inpatient')){
             c(0.5, 2.1)
           } else {
             c(0.1, 2.4)
@@ -69,10 +73,10 @@ get_correlation <- function(sukup_in, psy_in){
 
 ```
 
+
 Column {.sidebar data-width=250}
 --------------------------------------------------
 
-### Selections
 
 ```{r}
 
@@ -88,24 +92,26 @@ selectInput(
 
 radioButtons(
   'model_n', h4('Model'),
-  choices = list("1: Age-group, Calender Year" = 1, 
-                 "2: 1 + Urbanicity" = 2,
-                 "3: 2 + Education" = 3, 
-                 "4: 3 + Living Alone" = 4,
-                 "5: 4 + Ecnomic Activity" = 5, 
-                 "6: 4 For Employed Only" = 6,
-                 "7: 4 For Non-Employed" = 7, 
-                 "8: 1+ Ecnomic Activity" = 8,
-                 "9: 1 For Employed Only" = 9
+  choiceNames = list(
+    "1: Age-group, Calender Year", 
+    "2: 1 + Urbanicity",
+    "3: 2 + Education", 
+    "4: 3 + Living Alone",
+    HTML("<b>5: 4 + Ecnomic Activity</b>"), 
+    "6: 4 For Employed Only",
+    "7: 4 For Non-Employed", 
+    "8: 1 + Ecnomic Activity",
+    "9: 1 For Employed Only"
                  ),
+  choiceValues = seq(1,9),
   selected = 1)
 
- radioButtons("correlation_show", 
-                     h4("Show Correlations"), 
-                     choices = list("No" = FALSE, 
-                                    "Yes" = TRUE 
-                     ),
-                     selected = FALSE)
+ #radioButtons("correlation_show", 
+#                     h4("Show Correlations"), 
+#                     choices = list("No" = FALSE, 
+#                                    "Yes" = TRUE 
+#                     ),
+#                     selected = FALSE)
 
 ```
 
@@ -113,13 +119,22 @@ radioButtons(
 Row 1 {data-height=150}
 --------------------------------------------------
 
-### Info 
+### Introduction
 
 Income gradients in mortality across the whole income spectrum are commonly observed in the Western countries. Mental disorders associate with excess mortality and income associates with the risk of onset of mental disorders. We have studied income gradients in mortality among individuals with and without the history of mental health treatments. 
 
 Household income and other socioeconomic factors are highly intercorrelated. This supplementary online material shows the shapes of the gradients with different adjustments.
 
-Row 2 Plots
+Row 1.2 {data-height=100}
+--------------------------------------------------
+
+### Figure Info
+
+Income gradients in MRRs. Reference level is mean mortality rate. Separately for for men and women.
+
+Model 5 is the final model. Models 6-9 are additional analyses where employment statys is further accounted for explanatory purposes.
+
+Row 2 Plots {data-height=600
 --------------------------------------------------
 
 
@@ -155,19 +170,21 @@ Row 3 More Info {data-height=150}
 
 ```{r}
 
-renderTable({
+renderDataTable({
   rbindlist(list(Yes = get_correlation(sukup_in = 1,1), No = get_correlation(sukup_in =  1,0)), idcol = 'History of Treatments')
-}) 
+},  options = list(lengthChange = FALSE, paging = FALSE, filter = FALSE, info = FALSE)
+) 
 
 ```
 
 
-### Women, Correlation 
+### Women, Correlation
 
 ```{r}
 
-renderTable({
+renderDataTable({
   rbindlist(list(Yes = get_correlation(sukup_in =  2,1), No = get_correlation(sukup_in = 2,0)), idcol = 'History of Treatments')
-}) 
+}, options = list(lengthChange = FALSE, paging = FALSE, filter = FALSE, info = FALSE)
+  ) 
 
 ```
