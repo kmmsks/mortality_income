@@ -1,0 +1,173 @@
+---
+title: "results"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(flexdashboard)
+library(here)
+library(data.table)
+library(readxl)
+library(magrittr)
+#library(DT)
+library(plotly)
+
+
+
+```
+
+
+```{r}
+mrr_income_gradients <- setDT(read_excel(here('data_in', 'mrr_income_gradients.xlsx')))[, mrr := irr]
+
+
+create_plot <- function(sukup_in){
+  plot <- mrr_income_gradients[sukup == sukup_in & psy_type == input$psy_type & model_number == input$model_n & model_outcome=='death'] %>% 
+  .[, psy := factor(psy, labels = c('Yes', 'No'))] %>%
+  .[, x := as.factor(as.numeric(decile_3y))] %>%
+  plot_ly( x = ~x, y = ~mrr, type = 'scatter', error_y = list(array=~se), group=~psy, color=~psy, mode = 'lines+markers') %>% 
+    layout(
+      yaxis = list(
+        range=
+          if (input$psy_type %in% c('inpatient', 'outpatient')){
+            c(0.5, 2.1)
+          } else {
+            c(0.1, 2.4)
+          }
+        ),
+       shapes=list(type='line', x0=0, x1=9, y0=1, y1=1)
+  ) %>% 
+    layout(
+      yaxis = list(title = "MRR", dtick=0.2, hoverformat = '.2f'),
+      xaxis = list(title = "Househld Income Decile"), 
+      legend = list(title= list(text = "History of Treatments"), x = 0.7, y = 0.9)
+      )
+  plot
+  }
+  
+get_correlation <- function(sukup_in, psy_in){
+    d <- mrr_income_gradients[psy_type == input$psy_type & model_number == input$model_n & model_outcome=='death' & 
+                                sukup == sukup_in & psy == psy_in]
+    res <- cor.test(d[,irr], d[, as.numeric(decile_3y)],  method = "spearman")
+    
+    res <- as.data.table(list(estimate = as.numeric(res$estimate), p.value = as.numeric(res$p.value)), keep.rownames = T)
+    
+    res[p.value<0.001, p.value :=  '<.001'][
+      p.value > 0.001 & p.value < 0.01, p.value := formatC(res$p.value, digits = 3, format = 'f')][
+        p.value >= 0.01 & p.value <=0.99, p.value := formatC(res$p.value, digits = 2, format = 'f')][
+          p.value > 0.99, p.value := '>.99'][
+            , estimate := formatC(res$estimate, digits = 3, format = 'f')
+      ]
+    setnames(res, c('estimate', 'p.value'), c("Spearman's rho", "p-value"))
+    res
+}
+
+```
+
+Column {.sidebar data-width=250}
+--------------------------------------------------
+
+### Selections
+
+```{r}
+
+selectInput(
+  "psy_type", 
+  h4("Type of the History of Mental Health Treatments"), 
+  choices = list(
+    "Inpatient" = 'inpatient', 
+    "Outpatient" = 'outpatient', 
+    "Primary Care" = 'bhc'),
+  selected = 'inpatient')
+
+
+radioButtons(
+  'model_n', h4('Model'),
+  choices = list("1: Age-group, Calender Year" = 1, 
+                 "2: 1 + Urbanicity" = 2,
+                 "3: 2 + Education" = 3, 
+                 "4: 3 + Living Alone" = 4,
+                 "5: 4 + Ecnomic Activity" = 5, 
+                 "6: 4 For Employed Only" = 6,
+                 "7: 4 For Non-Employed" = 7, 
+                 "8: 1+ Ecnomic Activity" = 8,
+                 "9: 1 For Employed Only" = 9
+                 ),
+  selected = 1)
+
+ radioButtons("correlation_show", 
+                     h4("Show Correlations"), 
+                     choices = list("No" = FALSE, 
+                                    "Yes" = TRUE 
+                     ),
+                     selected = FALSE)
+
+```
+
+
+Row 1 {data-height=150}
+--------------------------------------------------
+
+### Info 
+
+Income gradients in mortality across the whole income spectrum are commonly observed in the Western countries. Mental disorders associate with excess mortality and income associates with the risk of onset of mental disorders. We have studied income gradients in mortality among individuals with and without the history of mental health treatments. 
+
+Household income and other socioeconomic factors are highly intercorrelated. This supplementary online material shows the shapes of the gradients with different adjustments.
+
+Row 2 Plots
+--------------------------------------------------
+
+
+### Men
+
+```{r}
+
+renderPlotly({
+  plot <- create_plot(1)
+  plot
+}) 
+
+```
+
+
+### Women
+
+```{r}
+
+renderPlotly({
+  plot <- create_plot(sukup_in = 2)
+  plot
+
+}) 
+
+```
+
+
+Row 3 More Info {data-height=150}
+--------------------------------------------------
+
+### Men, Correlation
+
+```{r}
+
+renderTable({
+  rbindlist(list(Yes = get_correlation(sukup_in = 1,1), No = get_correlation(sukup_in =  1,0)), idcol = 'History of Treatments')
+}) 
+
+```
+
+
+### Women, Correlation 
+
+```{r}
+
+renderTable({
+  rbindlist(list(Yes = get_correlation(sukup_in =  2,1), No = get_correlation(sukup_in = 2,0)), idcol = 'History of Treatments')
+}) 
+
+```
