@@ -5,8 +5,8 @@ account: kimmo-suokas
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3806547
-bundleId: 4358394
+bundleId: 4368268
 url: https://kimmo-suokas.shinyapps.io/mortality_income/
-when: 1615984481.20318
+when: 1616157694.82688
 asMultiple: FALSE
 asStatic: FALSE

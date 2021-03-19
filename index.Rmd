@@ -32,7 +32,7 @@ mrr_income_gradients <- setDT(read_excel('data_in/mrr_income_gradients.xlsx'))[,
 
 create_plot <- function(sukup_in){
   plot <- mrr_income_gradients[sukup == sukup_in & psy_type == input$psy_type & model_number == input$model_n & model_outcome=='death'] %>% 
-  .[, psy := factor(psy, labels = c('Yes', 'No'))] %>%
+  .[, psy := factor(psy, levels = c(1, 0), labels = c('Yes', 'No'))] %>%
   .[, x := as.factor(as.numeric(decile_3y))] %>%
   plot_ly( x = ~x, y = ~mrr, type = 'scatter', error_y = list(array=~se), group=~psy, color=~psy, mode = 'lines+markers') %>% 
     layout(
